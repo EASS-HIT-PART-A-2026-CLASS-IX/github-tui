@@ -10,6 +10,7 @@ OctoLens is a GitHub insights toolkit with three surfaces:
 ![Empty state](screenshots/01-empty-state.svg)
 ![User intel view](screenshots/02-user-intel.svg)
 ![Curl transport mode](screenshots/03-curl-mode.svg)
+![Frontend dashboard](screenshots/04-frontend-web.png)
 
 ## Prereqs
 
