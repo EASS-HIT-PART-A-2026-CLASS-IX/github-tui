@@ -1,0 +1,16 @@
+services:
+  octolens-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: octolens-api
+    ports:
+      - "8000:8000"
+    environment:
+      OCTOLENS_CORS_ORIGINS: "http://localhost:5173"
+      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+      GROQ_BASE_URL: "${GROQ_BASE_URL:-https://api.groq.com}"
+      OCTOLENS_LLM_MODEL: "${OCTOLENS_LLM_MODEL:-}"
+    restart: unless-stopped

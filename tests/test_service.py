@@ -1,5 +1,6 @@
 import asyncio
 
+from github_insights.core.models import AIInsights
 from github_insights.core.service import GitHubInsightsService
 
 
@@ -19,6 +20,21 @@ class StubDataClient:
         ]
 
 
+class StubDeepInsightsGenerator:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def generate(self, *, username: str, **_) -> AIInsights:
+        self.calls.append(username)
+        return AIInsights(
+            status="ready",
+            model="google-gla:gemini-2.5-flash",
+            summary="Strong OSS signal with Python-leading repos.",
+            strengths=["Healthy star-to-fork ratio."],
+            recommendations=["Increase issue triage cadence."],
+        )
+
+
 def test_service_load_snapshot_trims_username_and_computes_metrics() -> None:
     client = StubDataClient()
     service = GitHubInsightsService(client)
@@ -30,6 +46,19 @@ def test_service_load_snapshot_trims_username_and_computes_metrics() -> None:
     assert snapshot.metrics.total_forks == 1
     assert snapshot.metrics.score == 27
     assert client.calls == [("user", "octocat"), ("repos", "octocat")]
+
+
+def test_service_load_snapshot_adds_llm_insights_when_requested() -> None:
+    client = StubDataClient()
+    llm = StubDeepInsightsGenerator()
+    service = GitHubInsightsService(client, deep_insights_generator=llm)
+
+    snapshot = asyncio.run(service.load_snapshot("octocat", include_llm=True))
+
+    assert snapshot.ai_insights is not None
+    assert snapshot.ai_insights.status == "ready"
+    assert snapshot.ai_insights.summary == "Strong OSS signal with Python-leading repos."
+    assert llm.calls == ["octocat"]
 
 
 def test_service_load_snapshot_rejects_empty_username() -> None:
