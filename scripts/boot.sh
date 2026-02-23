@@ -8,11 +8,13 @@ ENV_FILE="${OCTOLENS_ENV_FILE:-$ROOT_DIR/.env}"
 BOOT_VALIDATE="${OCTOLENS_BOOT_VALIDATE:-1}"
 BOOT_START_FRONTEND="${OCTOLENS_BOOT_START_FRONTEND:-1}"
 BOOT_LAUNCH_TUI="${OCTOLENS_BOOT_LAUNCH_TUI:-1}"
+BOOT_OPEN_BROWSER="${OCTOLENS_BOOT_OPEN_BROWSER:-1}"
 FRONTEND_HOST="${OCTOLENS_FRONTEND_HOST:-127.0.0.1}"
 FRONTEND_PORT="${OCTOLENS_FRONTEND_PORT:-5173}"
 STATE_DIR="${OCTOLENS_STATE_DIR:-$ROOT_DIR/.octolens}"
 FRONTEND_PID_FILE="$STATE_DIR/frontend.pid"
 FRONTEND_LOG_FILE="$STATE_DIR/frontend.log"
+FRONTEND_URL="http://${FRONTEND_HOST}:${FRONTEND_PORT}"
 
 log() {
   printf '[boot] %s\n' "$1"
@@ -57,7 +59,25 @@ wait_for_frontend() {
     fi
     sleep 1
   done
-  fail "Frontend did not become ready at http://${FRONTEND_HOST}:${FRONTEND_PORT}." 52
+  fail "Frontend did not become ready at ${FRONTEND_URL}." 52
+}
+
+open_frontend_in_browser() {
+  if [[ "$BOOT_OPEN_BROWSER" != "1" ]]; then
+    return 0
+  fi
+
+  if command -v open >/dev/null 2>&1; then
+    open "$FRONTEND_URL" >/dev/null 2>&1 || log "Could not auto-open browser; open ${FRONTEND_URL} manually."
+    return 0
+  fi
+
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$FRONTEND_URL" >/dev/null 2>&1 || log "Could not auto-open browser; open ${FRONTEND_URL} manually."
+    return 0
+  fi
+
+  log "No browser opener command found; open ${FRONTEND_URL} manually."
 }
 
 start_frontend() {
@@ -68,12 +88,13 @@ start_frontend() {
     existing_pid="$(cat "$FRONTEND_PID_FILE" 2>/dev/null || true)"
     if is_process_running "$existing_pid"; then
       log "Frontend dev server already running (PID $existing_pid)."
+      open_frontend_in_browser
       return 0
     fi
     rm -f "$FRONTEND_PID_FILE"
   fi
 
-  log "Starting frontend dev server on http://${FRONTEND_HOST}:${FRONTEND_PORT} ..."
+  log "Starting frontend dev server on ${FRONTEND_URL} ..."
   (
     cd frontend
     if [[ ! -d node_modules ]]; then
@@ -88,6 +109,7 @@ start_frontend() {
 
   wait_for_frontend
   log "Frontend is ready."
+  open_frontend_in_browser
 }
 
 require_cmd docker
@@ -114,7 +136,7 @@ fi
 log "System boot complete."
 log "Backend: http://localhost:8000"
 if [[ "$BOOT_START_FRONTEND" == "1" ]]; then
-  log "Frontend: http://${FRONTEND_HOST}:${FRONTEND_PORT} (logs: $FRONTEND_LOG_FILE)"
+  log "Frontend: ${FRONTEND_URL} (logs: $FRONTEND_LOG_FILE)"
 fi
 log "Stop backend: docker compose down"
 if [[ "$BOOT_START_FRONTEND" == "1" ]]; then
